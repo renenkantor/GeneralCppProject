@@ -28,6 +28,9 @@ public:
     ModRM modRM{};
 
     explicit Opcode(const string &full_input);
+
+    int get_offset(const string &input);
+
     void decide_if_legacy(const string &input);
 
     void decide_if_rex(const string &input);
@@ -35,6 +38,8 @@ public:
     void decide_opcode_len(const string &input);
 
     void fill_rex(const char &rex_value);
+
+    void read_operation(const string &input);
 };
 
 

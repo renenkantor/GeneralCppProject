@@ -2,6 +2,22 @@
 #include <stdexcept>
 #include <bitset>
 
+int Opcode::get_offset(const string &input) {
+    int offset;
+    if (is_legacy) {
+        if (is_rex)
+            offset = 6;
+        else
+            offset = 3;
+    } else {
+        if (is_rex)
+            offset = 3;
+        else
+            offset = 0;
+    }
+    return offset;
+}
+
 void Opcode::decide_if_legacy(const string &input) {
     is_legacy = false;
     if (input[0] == '6')
@@ -47,19 +63,7 @@ void Opcode::fill_rex(const char &rex_value) {
 
 void Opcode::decide_opcode_len(const string &input) {
 
-    int offset;
-    if (is_legacy) {
-        if (is_rex)
-            offset = 6;
-        else
-            offset = 3;
-    } else {
-        if (is_rex)
-            offset = 3;
-        else
-            offset = 0;
-    }
-
+    int offset = get_offset(input);
     if (input[offset + 0] != '0' || input[offset + 1] != 'F') {
         byte_len = 1;
         return;
@@ -81,4 +85,15 @@ Opcode::Opcode(const string &full_input) {
     decide_if_legacy(full);
     decide_if_rex(full);
     decide_opcode_len(full);
+    read_operation(full);
+}
+
+void Opcode::read_operation(const string &input) {
+    int offset = get_offset(input);
+    for (int i = 0; i < byte_len; i++) {
+        operation += input[offset + byte_len * i];
+        operation += input[offset + byte_len * i + 1];
+        operation += " ";
+    }
+    operation.pop_back();
 }
