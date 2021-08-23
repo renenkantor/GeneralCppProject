@@ -2,7 +2,9 @@
 #define GENERALCPPPROJECT_OPCODE_H
 
 #include <iostream>
-
+#include <vector>
+#include <utility>
+#include "OpcodesTable.h"
 using std::string;
 
 struct REX {
@@ -18,28 +20,33 @@ struct ModRM {
 class Opcode {
 public:
     string full;
+    std::vector<Byte> bytes_of_op{};
     string operation;
-    string left_operand;
-    string right_operand;
     int byte_len{};
-    bool is_legacy{};
+    bool is_legacy;
+    bool is_legacy_16;
+    bool is_legacy_32;
     bool is_rex{};
     REX rex{};
     ModRM modRM{};
 
     explicit Opcode(const string &full_input);
 
-    int get_offset(const string &input);
+    int get_offset(const string &input) const;
 
-    void decide_if_legacy(const string &input);
+    void decide_if_legacy();
 
-    void decide_if_rex(const string &input);
+    void decide_if_rex();
 
     void decide_opcode_len(const string &input);
 
     void fill_rex(const char &rex_value);
 
-    void read_operation(const string &input);
+    void fill_bytes(const string &input);
+
+    void read_operation();
+
+    void analyze_one_byte_opcode();
 };
 
 

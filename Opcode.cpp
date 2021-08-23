@@ -1,8 +1,29 @@
 #include "Opcode.h"
 #include <stdexcept>
 #include <bitset>
+#include <algorithm>
 
-int Opcode::get_offset(const string &input) {
+Opcode::Opcode(const string &full_input) {
+    full = full_input;
+    is_legacy = false;
+    is_legacy_16 = false;
+    is_legacy_32 = false;
+    is_rex = false;
+    rex.W = false;
+    rex.R = false;
+    rex.X = false;
+    rex.B = false;
+    fill_bytes(full);
+    decide_if_legacy();
+    decide_if_rex();
+    decide_opcode_len(full);
+    read_operation();
+    if (byte_len == 1) {
+        analyze_one_byte_opcode();
+    }
+}
+
+int Opcode::get_offset(const string &input) const {
     int offset;
     if (is_legacy) {
         if (is_rex)
@@ -18,27 +39,29 @@ int Opcode::get_offset(const string &input) {
     return offset;
 }
 
-void Opcode::decide_if_legacy(const string &input) {
-    is_legacy = false;
-    if (input[0] == '6')
-        if (input[1] == '6' || input[1] == '7')
-            is_legacy = true;
+void Opcode::decide_if_legacy() {
+    if (bytes_of_op[0].first != '6')
+        return;
+    if (bytes_of_op[0].second == '6') {
+        is_legacy = true;
+        is_legacy_16 = true;
+    } else if (bytes_of_op[0].second == '7') {
+        is_legacy = true;
+        is_legacy_32 = true;
+    }
 }
 
-void Opcode::decide_if_rex(const string &input) {
-    is_rex = false;
+void Opcode::decide_if_rex() {
     if (is_legacy) {
-        if (input[3] == '4')
+        if (bytes_of_op[1].first == '4') {
             is_rex = true;
+            fill_rex(bytes_of_op[1].second);
+        }
     } else {
-        if (input[0] == '4')
+        if (bytes_of_op[0].first == '4') {
             is_rex = true;
-    }
-    if (is_rex) {
-        if (is_legacy)
-            fill_rex(input[4]);
-        else
-            fill_rex(input[1]);
+            fill_rex(bytes_of_op[0].second);
+        }
     }
 }
 
@@ -76,24 +99,45 @@ void Opcode::decide_opcode_len(const string &input) {
     byte_len = 2;
 }
 
-Opcode::Opcode(const string &full_input) {
-    full = full_input;
-    rex.W = false;
-    rex.R = false;
-    rex.X = false;
-    rex.B = false;
-    decide_if_legacy(full);
-    decide_if_rex(full);
-    decide_opcode_len(full);
-    read_operation(full);
+
+void Opcode::read_operation() {
+    int offset = 0;
+    if (is_legacy)
+        offset++;
+    if (is_rex)
+        offset++;
+
+    if (byte_len == 1) {
+        operation = bytes_of_op[offset].first;
+        operation += bytes_of_op[offset].second;
+    } else if (byte_len == 2) {
+        operation = bytes_of_op[offset + 1].first;
+        operation += bytes_of_op[offset + 1].second;
+    } else if (byte_len == 3) {
+        operation = bytes_of_op[offset + 2].first;
+        operation += bytes_of_op[offset + 2].second;
+    }
+
 }
 
-void Opcode::read_operation(const string &input) {
-    int offset = get_offset(input);
-    for (int i = 0; i < byte_len; i++) {
-        operation += input[offset + byte_len * i];
-        operation += input[offset + byte_len * i + 1];
-        operation += " ";
+void Opcode::fill_bytes(const string &input) {
+    string tmp = input;
+    // remove spaces.
+    string::iterator end_pos = std::remove(tmp.begin(), tmp.end(), ' ');
+    tmp.erase(end_pos, tmp.end());
+
+    // this is to ensure even pairs in bytes - add dummy char at end.
+    if (tmp.length() % 2 != 0)
+        tmp += '-';
+    Byte cur_byte = std::make_pair(' ', ' ');
+    for (int i = 0; i < tmp.length() - 1; i += 2) {
+        cur_byte.first = tmp[i];
+        cur_byte.second = tmp[i + 1];
+        bytes_of_op.push_back(cur_byte);
     }
-    operation.pop_back();
+}
+
+void Opcode::analyze_one_byte_opcode() {
+    int hex_val = std::stoi(operation, 0, 16);
+    std::cout << tmp_op_table[hex_val].instr << std::endl;
 }
